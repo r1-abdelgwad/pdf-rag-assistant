@@ -7,13 +7,11 @@ shows which document and page each answer came from, and says so when the answer
 - **Frontend:** React (Vite)
 - **LLM:** Groq API (`openai/gpt-oss-120b`)
 - **Vector database:** ChromaDB (stored on disk)
-- **Embeddings:** `intfloat/multilingual-e5-large` (English + Arabic) through the Hugging Face Inference API
+- **Embeddings:** `intfloat/multilingual-e5-small` (English + Arabic) via [sentence-transformers](https://www.sbert.net/) — runs locally, no API key needed
 
 ## Run it
 
-Requirements: Python 3.10+, Node.js 18+, a free [Groq API key](https://console.groq.com/keys) and a free
-[Hugging Face token](https://huggingface.co/settings/tokens) (create a fine-grained token with the
-"Make calls to Inference Providers" permission).
+Requirements: Python 3.10+, Node.js 18+, and a free [Groq API key](https://console.groq.com/keys).
 
 ### 1. Install the backend
 
@@ -25,12 +23,14 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r backend/requirements.txt
 ```
 
-Your keys go in `backend/.env` (copy `backend/.env.example`):
+Your key goes in `backend/.env` (copy `backend/.env.example`):
 
 ```
 GROQ_API_KEY=your_groq_key
-HF_TOKEN=your_huggingface_token
 ```
+
+> **Note:** On first document upload the embedding model (`intfloat/multilingual-e5-small`) is
+> downloaded once from the Hugging Face Hub (~120 MB) and cached locally. No API key is needed.
 
 ### 2. Build the web interface (once)
 
@@ -82,7 +82,7 @@ pytest
 
 ```
 React UI ──HTTP──> FastAPI ──> RAG pipeline ──> ChromaDB (vectors on disk)
-                                   ├─────────> Hugging Face (embeddings)
+                                   ├─────────> sentence-transformers (embeddings, local)
                                    └─────────> Groq LLM
 ```
 
@@ -95,7 +95,7 @@ backend/app/
   routes/documents.py   upload, list, delete PDFs
   routes/chat.py        chat endpoint
   services/pdf.py       text extraction + chunking
-  services/embeddings.py     Hugging Face embeddings
+  services/embeddings.py     local sentence-transformers embeddings
   services/vector_store.py   ChromaDB wrapper
   services/llm.py       Groq client + prompts
   services/chat.py      the RAG pipeline
@@ -126,15 +126,13 @@ frontend/src/           App, api client, DocumentPanel, ChatWindow, MessageBubbl
 
 ### Error handling
 
-Invalid Hugging Face token, embedding model not available, rate limits,
-invalid or oversized files, non-PDF uploads, password-protected or scanned PDFs (no text),
-empty questions, missing or invalid API key, LLM rate limits and network failures all return a
+Invalid or oversized files, non-PDF uploads, password-protected or scanned PDFs (no text),
+empty questions, missing or invalid Groq API key, LLM rate limits and network failures all return a
 clear message that the UI shows to the user. Re-uploading a file replaces the old version.
 
 ### Limitations
 
 - Scanned PDFs need OCR, which is not included.
-- The model must be served by the Hugging Face `hf-inference` provider. Each embedding model gets its own collection, so after changing `EMBEDDING_MODEL` you need to upload your PDFs again. Models that do not use e5-style prefixes need `EMBEDDING_QUERY_PREFIX=` and `EMBEDDING_DOCUMENT_PREFIX=` set to empty.
-- Document text is sent to the Hugging Face API to be embedded, so do not upload confidential files.
+- Each embedding model gets its own ChromaDB collection, so after changing `EMBEDDING_MODEL` you need to upload your PDFs again. Models that do not use e5-style prefixes need `EMBEDDING_QUERY_PREFIX=` and `EMBEDDING_DOCUMENT_PREFIX=` set to empty.
 - All users share one knowledge base (no authentication).
 - Tune `MAX_DISTANCE` in `.env` if the bot refuses too often (raise it) or answers off-topic questions (lower it).

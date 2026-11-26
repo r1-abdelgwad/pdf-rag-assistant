@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.2
     llm_max_tokens: int = 2048
 
-    # Embeddings (Hugging Face Inference API)
-    hf_token: str = ""
-    embedding_model: str = "intfloat/multilingual-e5-large"
+    # Embeddings (local sentence-transformers, downloaded once on first use)
+    embedding_model: str = "intfloat/multilingual-e5-small"
     # e5 models expect these prefixes. For models that don't (e.g. BAAI/bge-small-en-v1.5) set both to "".
     embedding_query_prefix: str = "query: "
     embedding_document_prefix: str = "passage: "
