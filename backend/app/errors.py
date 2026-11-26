@@ -1,0 +1,8 @@
+"""Errors that are shown to the user with a specific HTTP status."""
+
+
+class AppError(Exception):
+    def __init__(self, message: str, status_code: int = 500) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
